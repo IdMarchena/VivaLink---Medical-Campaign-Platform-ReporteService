@@ -2,13 +2,6 @@
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
-        <group>
-            <file>file:/C:/Users/Usuario/Documents/NetBeansProjects/ReporteService/src/java/presentacion/ReporteServlet.java</file>
-            <file>file:/C:/Users/Usuario/Documents/NetBeansProjects/ReporteService/src/java/servicio/service/ReporteService.java</file>
-            <file>file:/C:/Users/Usuario/Documents/NetBeansProjects/ReporteService/src/java/servicio/serviceImpl/ReporteServiceImpl.java</file>
-            <file>file:/C:/Users/Usuario/Documents/NetBeansProjects/ReporteService/src/java/dto/ReporteDto.java</file>
-            <file>file:/C:/Users/Usuario/Documents/NetBeansProjects/ReporteService/web/jsp/editarReporte.jsp</file>
-            <file>file:/C:/Users/Usuario/Documents/NetBeansProjects/ReporteService/web/jsp/crearReporte.jsp</file>
-        </group>
+        <group/>
     </open-files>
 </project-private>
