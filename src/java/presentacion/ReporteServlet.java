@@ -63,24 +63,12 @@ public class ReporteServlet extends HttpServlet {
                 listarReportesPorTipo(request, response);
             } else {
                 // Acción no reconocida
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "Acción no reconocida: " + action, 
-                    null, 
-                    HttpServletResponse.SC_BAD_REQUEST
-                );
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("Acción no reconocida: " + action));
             }
-        } catch (Exception e) {
-            JsonResponse<Object> errorResponse = new JsonResponse<>(
-                false, 
-                "Error interno del servidor: " + e.getMessage(), 
-                null, 
-                HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            );
+        } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write(gson.toJson(errorResponse));
+            response.getWriter().write(gson.toJson("Error interno del servidor: " + e.getMessage()));
         }
     }
 
@@ -101,14 +89,8 @@ public class ReporteServlet extends HttpServlet {
                 fechaCreacion == null || fechaCreacion.isEmpty() || campañaNombre == null || campañaNombre.isEmpty() ||
                 usuarioNombre == null || usuarioNombre.isEmpty() || tipoReporte == null || tipoReporte.isEmpty()) {
                 
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "Todos los campos son requeridos", 
-                    null, 
-                    HttpServletResponse.SC_BAD_REQUEST
-                );
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("Todos los campos son requeridos"));
                 return;
             }
 
@@ -117,27 +99,15 @@ public class ReporteServlet extends HttpServlet {
             
             // Verificar si la campaña existe
             if (!reporteService.verificarCampañaExistente(campañaNombre)) {
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "Campaña no encontrada", 
-                    null, 
-                    HttpServletResponse.SC_NOT_FOUND
-                );
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("Campaña no encontrada"));
                 return;
             }
 
             // Verificar si el usuario tiene el rol adecuado
             if (!reporteService.verificarUsuarioPorRol(usuarioNombre, "analista")) {
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "El usuario no tiene el rol adecuado", 
-                    null, 
-                    HttpServletResponse.SC_FORBIDDEN
-                );
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("El usuario no tiene el rol adecuado"));
                 return;
             }
 
@@ -151,102 +121,59 @@ public class ReporteServlet extends HttpServlet {
             // Llamar al servicio para guardar el reporte
             reporteService.guardarReporte(reporteDto);
 
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                true, 
-                "Reporte creado con éxito", 
-                null, 
-                HttpServletResponse.SC_CREATED
-            );
             response.setStatus(HttpServletResponse.SC_CREATED);
-            response.getWriter().write(gson.toJson(jsonResponse));
-        } catch (Exception e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "Hubo un error al crear el reporte: " + e.getMessage(), 
-                null, 
-                HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            );
+            response.getWriter().write(gson.toJson("Reporte creado con éxito"));
+            
+        } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Error al crear reporte: " + e.getMessage()));
         }
     }
 
     // Acción para listar todos los reportes
     private void listarReportes(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        List<ReporteDto> reportes = reporteService.listarTodosLosReportes();
-        
-        JsonResponse<List<ReporteDto>> jsonResponse = new JsonResponse<>(
-            true, 
-            "Reportes obtenidos exitosamente", 
-            reportes, 
-            HttpServletResponse.SC_OK
-        );
-        
-        response.getWriter().write(gson.toJson(jsonResponse));
+        try {
+            List<ReporteDto> reportes = reporteService.listarTodosLosReportes();
+            response.getWriter().write(gson.toJson(reportes));
+            
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write(gson.toJson("Error al listar reportes: " + e.getMessage()));
+        }
     }
 
     // Acción para buscar un reporte por ID
     private void buscarReportePorId(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String idd = request.getParameter("id");
+        String idStr = request.getParameter("id");
         
-        if (idd == null || idd.isEmpty()) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "El parámetro id es requerido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
+        if (idStr == null || idStr.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("El parámetro id es requerido"));
             return;
         }
         
         try {
-            int id = Integer.parseInt(idd);
+            int id = Integer.parseInt(idStr);
             ReporteDto reporte = reporteService.buscarReportePorId(id);
             
             if (reporte != null) {
-                JsonResponse<ReporteDto> jsonResponse = new JsonResponse<>(
-                    true, 
-                    "Reporte encontrado", 
-                    reporte, 
-                    HttpServletResponse.SC_OK
-                );
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson(reporte));
             } else {
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "Reporte no encontrado", 
-                    null, 
-                    HttpServletResponse.SC_NOT_FOUND
-                );
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("Reporte no encontrado"));
             }
         } catch (NumberFormatException e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "ID de reporte inválido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
-        } catch (Exception e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "Error al buscar el reporte: " + e.getMessage(), 
-                null, 
-                HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            );
+            response.getWriter().write(gson.toJson("ID de reporte inválido"));
+        } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Error al buscar reporte: " + e.getMessage()));
         }
     }
 
     // Acción para actualizar un reporte
     private void actualizarReporte(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String idd = request.getParameter("id");
+        String idStr = request.getParameter("id");
         String titulo = request.getParameter("titulo");
         String descripcion = request.getParameter("descripcion");
         String fechaCreacion = request.getParameter("fechaCreacion");
@@ -257,21 +184,15 @@ public class ReporteServlet extends HttpServlet {
         String comentario = request.getParameter("comentario");
 
         try {
-            int id = Integer.parseInt(idd);
+            int id = Integer.parseInt(idStr);
             
             // Validar parámetros requeridos
             if (titulo == null || titulo.isEmpty() || descripcion == null || descripcion.isEmpty() ||
                 fechaCreacion == null || fechaCreacion.isEmpty() || campañaNombre == null || campañaNombre.isEmpty() ||
                 usuarioNombre == null || usuarioNombre.isEmpty() || tipoReporte == null || tipoReporte.isEmpty()) {
                 
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "Todos los campos son requeridos", 
-                    null, 
-                    HttpServletResponse.SC_BAD_REQUEST
-                );
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("Todos los campos son requeridos"));
                 return;
             }
 
@@ -280,27 +201,15 @@ public class ReporteServlet extends HttpServlet {
             
             // Verificar si la campaña existe
             if (!reporteService.verificarCampañaExistente(campañaNombre)) {
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "Campaña no encontrada", 
-                    null, 
-                    HttpServletResponse.SC_NOT_FOUND
-                );
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("Campaña no encontrada"));
                 return;
             }
 
             // Verificar si el usuario tiene el rol adecuado
             if (!reporteService.verificarUsuarioPorRol(usuarioNombre, "analista")) {
-                JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                    false, 
-                    "El usuario no tiene el rol adecuado", 
-                    null, 
-                    HttpServletResponse.SC_FORBIDDEN
-                );
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.getWriter().write(gson.toJson(jsonResponse));
+                response.getWriter().write(gson.toJson("El usuario no tiene el rol adecuado"));
                 return;
             }
 
@@ -314,67 +223,33 @@ public class ReporteServlet extends HttpServlet {
             // Llamar al servicio para actualizar el reporte
             reporteService.actualizarReporte(id, reporteDto);
 
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                true, 
-                "Reporte actualizado con éxito", 
-                null, 
-                HttpServletResponse.SC_OK
-            );
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Reporte actualizado con éxito"));
+            
         } catch (NumberFormatException e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "ID de reporte inválido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
-        } catch (Exception e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "Hubo un error al actualizar el reporte: " + e.getMessage(), 
-                null, 
-                HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            );
+            response.getWriter().write(gson.toJson("ID de reporte inválido"));
+        } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Error al actualizar reporte: " + e.getMessage()));
         }
     }
 
     // Acción para eliminar un reporte
     private void eliminarReporte(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String idd = request.getParameter("id");
+        String idStr = request.getParameter("id");
 
         try {
-            int id = Integer.parseInt(idd);
+            int id = Integer.parseInt(idStr);
             reporteService.eliminarReporte(id);
 
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                true, 
-                "Reporte eliminado con éxito", 
-                null, 
-                HttpServletResponse.SC_OK
-            );
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Reporte eliminado con éxito"));
+            
         } catch (NumberFormatException e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "ID de reporte inválido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
-        } catch (Exception e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "Hubo un error al eliminar el reporte: " + e.getMessage(), 
-                null, 
-                HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            );
+            response.getWriter().write(gson.toJson("ID de reporte inválido"));
+        } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Error al eliminar reporte: " + e.getMessage()));
         }
     }
 
@@ -383,38 +258,19 @@ public class ReporteServlet extends HttpServlet {
         String fechaParam = request.getParameter("fecha");
         
         if (fechaParam == null || fechaParam.isEmpty()) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "El parámetro fecha es requerido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("El parámetro fecha es requerido"));
             return;
         }
         
         try {
             LocalDate fecha = LocalDate.parse(fechaParam);
             List<ReporteDto> reportes = reporteService.buscarReportesPorFecha(fecha);
+            response.getWriter().write(gson.toJson(reportes));
             
-            JsonResponse<List<ReporteDto>> jsonResponse = new JsonResponse<>(
-                true, 
-                "Reportes por fecha obtenidos exitosamente", 
-                reportes, 
-                HttpServletResponse.SC_OK
-            );
-            
-            response.getWriter().write(gson.toJson(jsonResponse));
-        } catch (Exception e) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "Error al procesar la fecha: " + e.getMessage(), 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
+        } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("Error al procesar la fecha: " + e.getMessage()));
         }
     }
 
@@ -423,27 +279,19 @@ public class ReporteServlet extends HttpServlet {
         String estado = request.getParameter("estado");
         
         if (estado == null || estado.isEmpty()) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "El parámetro estado es requerido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("El parámetro estado es requerido"));
             return;
         }
         
-        List<ReporteDto> reportes = reporteService.buscarReportesPorEstado(estado);
-        
-        JsonResponse<List<ReporteDto>> jsonResponse = new JsonResponse<>(
-            true, 
-            "Reportes por estado obtenidos exitosamente", 
-            reportes, 
-            HttpServletResponse.SC_OK
-        );
-        
-        response.getWriter().write(gson.toJson(jsonResponse));
+        try {
+            List<ReporteDto> reportes = reporteService.buscarReportesPorEstado(estado);
+            response.getWriter().write(gson.toJson(reportes));
+            
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write(gson.toJson("Error al listar reportes por estado: " + e.getMessage()));
+        }
     }
 
     // Acción para listar reportes por campaña
@@ -451,28 +299,20 @@ public class ReporteServlet extends HttpServlet {
         String campañaNombre = request.getParameter("campaña");
         
         if (campañaNombre == null || campañaNombre.isEmpty()) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "El parámetro campaña es requerido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("El parámetro campaña es requerido"));
             return;
         }
         
-        CampañaDto campañaDto = new CampañaDto(0, campañaNombre);
-        List<ReporteDto> reportes = reporteService.buscarReportesPorCampaña(campañaDto);
-        
-        JsonResponse<List<ReporteDto>> jsonResponse = new JsonResponse<>(
-            true, 
-            "Reportes por campaña obtenidos exitosamente", 
-            reportes, 
-            HttpServletResponse.SC_OK
-        );
-        
-        response.getWriter().write(gson.toJson(jsonResponse));
+        try {
+            CampañaDto campañaDto = new CampañaDto(0, campañaNombre);
+            List<ReporteDto> reportes = reporteService.buscarReportesPorCampaña(campañaDto);
+            response.getWriter().write(gson.toJson(reportes));
+            
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write(gson.toJson("Error al listar reportes por campaña: " + e.getMessage()));
+        }
     }
 
     // Acción para listar reportes por usuario
@@ -480,28 +320,20 @@ public class ReporteServlet extends HttpServlet {
         String usuarioNombre = request.getParameter("usuario");
         
         if (usuarioNombre == null || usuarioNombre.isEmpty()) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "El parámetro usuario es requerido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("El parámetro usuario es requerido"));
             return;
         }
         
-        UsuarioDto usuarioDto = new UsuarioDto(0, usuarioNombre);
-        List<ReporteDto> reportes = reporteService.buscarReportesPorUsuario(usuarioDto);
-        
-        JsonResponse<List<ReporteDto>> jsonResponse = new JsonResponse<>(
-            true, 
-            "Reportes por usuario obtenidos exitosamente", 
-            reportes, 
-            HttpServletResponse.SC_OK
-        );
-        
-        response.getWriter().write(gson.toJson(jsonResponse));
+        try {
+            UsuarioDto usuarioDto = new UsuarioDto(0, usuarioNombre);
+            List<ReporteDto> reportes = reporteService.buscarReportesPorUsuario(usuarioDto);
+            response.getWriter().write(gson.toJson(reportes));
+            
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write(gson.toJson("Error al listar reportes por usuario: " + e.getMessage()));
+        }
     }
 
     // Acción para listar reportes por tipo
@@ -509,27 +341,19 @@ public class ReporteServlet extends HttpServlet {
         String tipoReporte = request.getParameter("tipoReporte");
         
         if (tipoReporte == null || tipoReporte.isEmpty()) {
-            JsonResponse<Object> jsonResponse = new JsonResponse<>(
-                false, 
-                "El parámetro tipoReporte es requerido", 
-                null, 
-                HttpServletResponse.SC_BAD_REQUEST
-            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write(gson.toJson(jsonResponse));
+            response.getWriter().write(gson.toJson("El parámetro tipoReporte es requerido"));
             return;
         }
         
-        List<ReporteDto> reportes = reporteService.buscarReportesPorTipo(tipoReporte);
-        
-        JsonResponse<List<ReporteDto>> jsonResponse = new JsonResponse<>(
-            true, 
-            "Reportes por tipo obtenidos exitosamente", 
-            reportes, 
-            HttpServletResponse.SC_OK
-        );
-        
-        response.getWriter().write(gson.toJson(jsonResponse));
+        try {
+            List<ReporteDto> reportes = reporteService.buscarReportesPorTipo(tipoReporte);
+            response.getWriter().write(gson.toJson(reportes));
+            
+        } catch (IOException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write(gson.toJson("Error al listar reportes por tipo: " + e.getMessage()));
+        }
     }
 
     @Override
