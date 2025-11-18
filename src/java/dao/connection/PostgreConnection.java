@@ -16,7 +16,7 @@ import java.util.logging.Logger;
  */
 public class PostgreConnection implements DataBaseConnection{
     private Connection connection;
-    private static final String URL="jdbc://postgresql://localhost:5432/ReporteService";
+    private static final String URL="jdbc:postgresql://localhost:5432/ReporteService";
     private static final String USER="postgres";
     private static final String PASSWORD="12345678";
 

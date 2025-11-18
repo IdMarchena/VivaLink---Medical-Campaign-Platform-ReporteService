@@ -19,12 +19,11 @@ import modelo.Usuario;
  * @author Usuario
  */
 public class ReporteDaoMysql implements ReporteDao{
-        private final Connection conn;
+    private final Connection conn;
 
-    // Constructor que recibe el tipo de base de datos
-    public ReporteDaoMysql(String tipoDb) throws SQLException {
-        DataBaseConnection dbConnection = DataBaseConnectionFactory.connection(tipoDb);
-        this.conn = dbConnection.getConnection();
+    public ReporteDaoMysql(DataBaseConnection connection) throws SQLException {
+        DataBaseConnection db = DataBaseConnectionFactory.connection("mysql");
+        this.conn = db.getConnection();
     }
 
     @Override

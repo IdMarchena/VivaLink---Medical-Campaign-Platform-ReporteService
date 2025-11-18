@@ -9,21 +9,26 @@ import dao.ReporteDao;
 import dao.ReporteDaoMongo;
 import dao.ReporteDaoMysql;
 import dao.ReporteDaoPostgres;
+import dao.connection.DataBaseConnection;
+import factory.DataBaseConnectionFactory;
 /**
  *
  * @author Usuario
  */
 public class ReporteDaoFactory {
         public static ReporteDao dao(String tipoDao) throws SQLException{
+                DataBaseConnection conn = DataBaseConnectionFactory.connection(tipoDao);
                 switch (tipoDao.toLowerCase()) {
-            case "postgre":
-                return new ReporteDaoPostgres(tipoDao);
-            case "mysql":
-                return new ReporteDaoMysql(tipoDao);
-            case "mongo":
-                return new ReporteDaoMongo(tipoDao);               
-            default:
-                throw new AssertionError();
+            case "postgres" -> {
+                return new ReporteDaoPostgres(conn);
+                }
+            case "mysql" -> {
+                return new ReporteDaoMysql(conn);
+                }
+            case "mongo" -> {
+                return new ReporteDaoMongo(conn);
+                }
+            default -> throw new AssertionError();
         }
     }
     

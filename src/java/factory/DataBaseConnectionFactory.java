@@ -16,15 +16,17 @@ import dao.connection.DataBaseConnection;
 public class DataBaseConnectionFactory {
         public static DataBaseConnection connection(String tipoDb) throws SQLException{
         switch (tipoDb.toLowerCase()) {
-            case "postgre":
-                return (DataBaseConnection) PostgreConnection.conexion();
-            case "mysql":
-                return (DataBaseConnection) MysqlConnection.conexion();
-            case "mongo":
-                return (DataBaseConnection) MongoConnection.conexion();
+            case "postgres" -> {
+                return new PostgreConnection();
+                }
+            case "mysql" -> {
+                return new MysqlConnection();
+                }
+            case "mongo" -> {
+                return new MongoConnection();
+                }
                
-            default:
-                throw new AssertionError();
+            default -> throw new AssertionError();
         }
     }
 }

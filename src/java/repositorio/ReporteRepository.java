@@ -17,8 +17,8 @@ public class ReporteRepository {
     private final ReporteDao reporteDao;
 
     // Constructor que inicializa el Dao dependiendo del tipo de base de datos
-    public ReporteRepository(String tipoDb) throws SQLException {
-        reporteDao = ReporteDaoFactory.dao(tipoDb);
+    public ReporteRepository() throws SQLException {
+        reporteDao = ReporteDaoFactory.dao("postgres");
     }
 
     // Buscar un reporte por ID

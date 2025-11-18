@@ -23,8 +23,8 @@ public class ReporteServiceImpl implements ReporteService {
     private final UsuarioServiceClient usuarioServiceClient;
 
     // Constructor
-    public ReporteServiceImpl(String tipoDb) throws SQLException {
-        this.reporteRepository = new ReporteRepository(tipoDb);
+    public ReporteServiceImpl() throws SQLException {
+        this.reporteRepository = new ReporteRepository();
         this.campañaServiceClient = new CampañaServiceClient();
         this.usuarioServiceClient = new UsuarioServiceClient();
     }

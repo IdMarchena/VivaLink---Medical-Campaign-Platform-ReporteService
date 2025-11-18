@@ -19,12 +19,11 @@ import modelo.Usuario;
  * @author Usuario
  */
 public class ReporteDaoMongo implements ReporteDao{
-            private final Connection conn;
+    private final Connection conn;
 
-    // Constructor que recibe el tipo de base de datos
-    public ReporteDaoMongo(String tipoDb) throws SQLException {
-        DataBaseConnection dbConnection = DataBaseConnectionFactory.connection(tipoDb);
-        this.conn = dbConnection.getConnection();
+    public ReporteDaoMongo(DataBaseConnection connection) throws SQLException {
+        DataBaseConnection db = DataBaseConnectionFactory.connection("mongo");
+        this.conn = db.getConnection();
     }
 
     @Override

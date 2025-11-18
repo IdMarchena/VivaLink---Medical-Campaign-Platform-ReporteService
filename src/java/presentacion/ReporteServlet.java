@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 @WebServlet(name = "ReporteServlet", urlPatterns = {"/ReporteServlet"})
 public class ReporteServlet extends HttpServlet {
@@ -24,8 +25,12 @@ public class ReporteServlet extends HttpServlet {
 
     // Constructor
     public ReporteServlet() throws SQLException  {
-        this.reporteService = new ReporteServiceImpl("TipoDb");
-        this.gson = new Gson();
+        this.reporteService = new ReporteServiceImpl();
+        // Configurar Gson con el adaptador para LocalDate
+        this.gson = new GsonBuilder()
+            .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
+            .setDateFormat("yyyy-MM-dd")
+            .create();
     }
 
     // Método para procesar las peticiones

@@ -13,50 +13,73 @@ import modelo.Usuario;
 public class ReporteDaoPostgres implements ReporteDao {
     private final Connection conn;
 
-    // Constructor que recibe el tipo de base de datos
-    public ReporteDaoPostgres(String tipoDb) throws SQLException {
-        DataBaseConnection dbConnection = DataBaseConnectionFactory.connection(tipoDb);
-        this.conn = dbConnection.getConnection();
+    public ReporteDaoPostgres(DataBaseConnection connection) throws SQLException {
+        DataBaseConnection db = DataBaseConnectionFactory.connection("postgres");
+        this.conn = db.getConnection();
     }
 
-    // Método para buscar un reporte por ID
+    // Método para buscar un reporte por ID - CORREGIDO
     @Override
     public Reporte buscarReportePorId(int id) {
         String sql = """
-                    SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                            r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                            c.id AS cId,c.nombre AS cNombre,
-                            u.id AS uId, u.nombre AS uNombre
-                    FROM reportes r 
-                    LEFT JOIN campañas c ON r.campaña_id=c.id
-                    LEFT JOIN usuarios u ON r.usuario_id= u.id
-                    WHERE reporteId=?
-            """;
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.id = ?
+        """;
+        
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ResultSet rs = ps.executeQuery();
+            
             if (rs.next()) {
+                Campaña campaña = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario usuario = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
                 return new Reporte(
                     rs.getInt("reporteId"),
                     rs.getString("rTitulo"),
                     rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    campaña,
+                    usuario,
+                    rs.getString("rTipoReporte"),
                     rs.getString("rEstado"),
-                    rs.getString("rComentario") // Relacionar los comentarios
+                    rs.getString("rComentario")
                 );
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error buscando reporte por ID: " + e.getMessage(), e);
         }
-        return null; // Retorna null si no se encuentra el reporte
+        return null;
     }
 
-    // Verificar si un reporte existe por ID
+    // Verificar si un reporte existe por ID - CORREGIDO
     @Override
     public boolean verificarSiElReporteExiste(int id) {
-        String sql = "SELECT COUNT(*) FROM reportes WHERE id_reporte = ?";
+        String sql = "SELECT COUNT(*) FROM reportes WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ResultSet rs = ps.executeQuery();
@@ -64,66 +87,20 @@ public class ReporteDaoPostgres implements ReporteDao {
                 return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error verificando existencia del reporte: " + e.getMessage(), e);
         }
         return false;
     }
 
-    // Guardar un reporte
+    // Guardar un reporte - CORREGIDO
     @Override
     public void guardar(Reporte reporte) {
-        String sql = "INSERT INTO reportes (titulo, descripcion, fecha_creacion, estado, id_campaña, id_usuario, tipo_reporte, comentarios) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, reporte.getTitulo());
-            ps.setString(2, reporte.getDescripcion());
-            ps.setDate(3, Date.valueOf(LocalDate.now())); // Fecha de creación, asumiendo que es hoy
-            ps.setString(4, reporte.getEstado());
-            ps.setInt(5, reporte.getCampaña().getId());
-            ps.setInt(6, reporte.getUsuarioM().getId());
-            ps.setString(7, reporte.getTipoReporte()); // Agregar tipo de reporte
-            ps.setString(8, reporte.getComentario()); // Agregar comentarios
-            ps.executeUpdate();
-        } catch (SQLException e) {
-        }
-    }
-
-    // Listar todos los reportes
-    @Override
-    public List<Reporte> listarTodosLosReportes() {
         String sql = """
-                    SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                            r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                            c.id AS cId,c.nombre AS cNombre,
-                            u.id AS uId, u.nombre AS uNombre
-                    FROM reportes r 
-                    LEFT JOIN campañas c ON r.campaña_id=c.id
-                    LEFT JOIN usuarios u ON r.usuario_id= u.id
-                    WHERE r.id=?
-            """;
-        List<Reporte> reportes = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                reportes.add(new Reporte(
-                    rs.getInt("reporteId"),
-                    rs.getString("rTitulo"),
-                    rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
-                    rs.getString("rEstado"),
-                    rs.getString("rComentario") // Relacionar los comentarios
-                ));
-            }
-        } catch (SQLException e) {
-        }
-        return reportes;
-    }
-
-    // Actualizar un reporte
-    @Override
-    public void actualizarReporte(int id, Reporte reporte) {
-        String sql = "UPDATE reportes SET titulo = ?, descripcion = ?, fecha_creacion = ?, estado = ?, id_campaña = ?, id_usuario = ?, tipo_reporte = ?, comentarios = ? WHERE id_reporte = ?";
+            INSERT INTO reportes (titulo, descripcion, fecha_creacion, estado, campaña_id, usuario_id, tipo_reporte, comentario) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+        
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, reporte.getTitulo());
             ps.setString(2, reporte.getDescripcion());
@@ -131,196 +108,417 @@ public class ReporteDaoPostgres implements ReporteDao {
             ps.setString(4, reporte.getEstado());
             ps.setInt(5, reporte.getCampaña().getId());
             ps.setInt(6, reporte.getUsuarioM().getId());
-            ps.setString(7, reporte.getTipoReporte()); // Actualizar tipo de reporte
-            ps.setString(8, reporte.getComentario()); // Actualizar comentarios
-            ps.setInt(9, id);
+            ps.setString(7, reporte.getTipoReporte());
+            ps.setString(8, reporte.getComentario());
+            
             ps.executeUpdate();
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error guardando reporte: " + e.getMessage(), e);
         }
     }
 
-    // Eliminar un reporte
+    // Listar todos los reportes - CORREGIDO (eliminé el WHERE que estaba mal)
+    @Override
+    public List<Reporte> listarTodosLosReportes() {
+        String sql = """
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            ORDER BY r.id
+        """;
+        
+        List<Reporte> reportes = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            
+            while (rs.next()) {
+                Campaña campaña = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario usuario = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
+                Reporte reporte = new Reporte(
+                    rs.getInt("reporteId"),
+                    rs.getString("rTitulo"),
+                    rs.getString("rDescripcion"),
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    campaña,
+                    usuario,
+                    rs.getString("rTipoReporte"),
+                    rs.getString("rEstado"),
+                    rs.getString("rComentario")
+                );
+                reportes.add(reporte);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error listando reportes: " + e.getMessage(), e);
+        }
+        return reportes;
+    }
+
+    // Actualizar un reporte - CORREGIDO
+    @Override
+    public void actualizarReporte(int id, Reporte reporte) {
+        String sql = """
+            UPDATE reportes 
+            SET titulo = ?, descripcion = ?, fecha_creacion = ?, estado = ?, 
+                campaña_id = ?, usuario_id = ?, tipo_reporte = ?, comentario = ? 
+            WHERE id = ?
+        """;
+        
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, reporte.getTitulo());
+            ps.setString(2, reporte.getDescripcion());
+            ps.setDate(3, Date.valueOf(reporte.getFechaCreacion()));
+            ps.setString(4, reporte.getEstado());
+            ps.setInt(5, reporte.getCampaña().getId());
+            ps.setInt(6, reporte.getUsuarioM().getId());
+            ps.setString(7, reporte.getTipoReporte());
+            ps.setString(8, reporte.getComentario());
+            ps.setInt(9, id);
+            
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error actualizando reporte: " + e.getMessage(), e);
+        }
+    }
+
+    // Eliminar un reporte - CORREGIDO
     @Override
     public void eliminarReporte(int id) {
-        String sql = "DELETE FROM reportes r WHERE r.id = ?";
+        String sql = "DELETE FROM reportes WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error eliminando reporte: " + e.getMessage(), e);
         }
     }
 
-    // Buscar reportes por fecha
+    // Buscar reportes por fecha - CORREGIDO
     @Override
     public List<Reporte> buscarReportesPorFecha(LocalDate fecha) {
-                String sql = """
-                    SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                            r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                            c.id AS cId,c.nombre AS cNombre,
-                            u.id AS uId, u.nombre AS uNombre
-                    FROM reportes r 
-                    LEFT JOIN campañas c ON r.campaña_id=c.id
-                    LEFT JOIN usuarios u ON r.usuario_id= u.id
-                    WHERE rFecha=?
-            """;
+        String sql = """
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.fecha_creacion = ?
+            ORDER BY r.id
+        """;
+        
         List<Reporte> reportes = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, Date.valueOf(fecha));
             ResultSet rs = ps.executeQuery();
+            
             while (rs.next()) {
-                reportes.add(new Reporte(
+                Campaña campaña = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario usuario = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
+                Reporte reporte = new Reporte(
                     rs.getInt("reporteId"),
                     rs.getString("rTitulo"),
                     rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    campaña,
+                    usuario,
+                    rs.getString("rTipoReporte"),
                     rs.getString("rEstado"),
-                    rs.getString("rComentario") // Relacionar los comentarios
-                ));
+                    rs.getString("rComentario")
+                );
+                reportes.add(reporte);
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error buscando reportes por fecha: " + e.getMessage(), e);
         }
         return reportes;
     }
 
-    // Buscar reportes por estado
+    // Buscar reportes por estado - CORREGIDO
     @Override
     public List<Reporte> buscarReportesPorEstado(String estado) {
         String sql = """
-                    SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                            r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                            c.id AS cId,c.nombre AS cNombre,
-                            u.id AS uId, u.nombre AS uNombre
-                    FROM reportes r 
-                    LEFT JOIN campañas c ON r.campaña_id=c.id
-                    LEFT JOIN usuarios u ON r.usuario_id= u.id
-                    WHERE rEstado=?
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.estado = ?
+            ORDER BY r.id
         """;
+        
         List<Reporte> reportes = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, estado);
             ResultSet rs = ps.executeQuery();
+            
             while (rs.next()) {
-                reportes.add(new Reporte(
+                Campaña campaña = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario usuario = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
+                Reporte reporte = new Reporte(
                     rs.getInt("reporteId"),
                     rs.getString("rTitulo"),
                     rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    campaña,
+                    usuario,
+                    rs.getString("rTipoReporte"),
                     rs.getString("rEstado"),
-                    rs.getString("rComen    tario") // Relacionar los comentarios
-                ));
+                    rs.getString("rComentario")
+                );
+                reportes.add(reporte);
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error buscando reportes por estado: " + e.getMessage(), e);
         }
         return reportes;
     }
 
-    // Buscar reportes por campaña
+    // Buscar reportes por campaña - CORREGIDO
     @Override
     public List<Reporte> buscarReportesPorCampaña(Campaña campaña) {
-                String sql = """
-                    SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                            r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                            c.id AS cId,c.nombre AS cNombre,
-                            u.id AS uId, u.nombre AS uNombre
-                    FROM reportes r 
-                    LEFT JOIN campañas c ON r.campaña_id=c.id
-                    LEFT JOIN usuarios u ON r.usuario_id= u.id
-                    WHERE rCampañaId=?
+        String sql = """
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.campaña_id = ?
+            ORDER BY r.id
         """;
+        
         List<Reporte> reportes = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, campaña.getId());
             ResultSet rs = ps.executeQuery();
+            
             while (rs.next()) {
-                reportes.add(new Reporte(
+                Campaña camp = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario usuario = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
+                Reporte reporte = new Reporte(
                     rs.getInt("reporteId"),
                     rs.getString("rTitulo"),
                     rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    camp,
+                    usuario,
+                    rs.getString("rTipoReporte"),
                     rs.getString("rEstado"),
-                    rs.getString("rComentario") // Relacionar los comentarios
-                ));
+                    rs.getString("rComentario")
+                );
+                reportes.add(reporte);
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error buscando reportes por campaña: " + e.getMessage(), e);
         }
         return reportes;
     }
 
-    // Buscar reportes por usuario
+    // Buscar reportes por usuario - CORREGIDO
     @Override
     public List<Reporte> buscarReportesPorUsuario(Usuario usuario) {
         String sql = """
-                SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                        r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                        c.id AS cId,c.nombre AS cNombre,
-                        u.id AS uId, u.nombre AS uNombre
-                FROM reportes r 
-                LEFT JOIN campañas c ON r.campaña_id=c.id
-                LEFT JOIN usuarios u ON r.usuario_id= u.id
-                WHERE uId=?
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.usuario_id = ?
+            ORDER BY r.id
         """;
+        
         List<Reporte> reportes = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, usuario.getId());
             ResultSet rs = ps.executeQuery();
+            
             while (rs.next()) {
-                reportes.add(new Reporte(
+                Campaña campaña = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario user = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
+                Reporte reporte = new Reporte(
                     rs.getInt("reporteId"),
                     rs.getString("rTitulo"),
                     rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    campaña,
+                    user,
+                    rs.getString("rTipoReporte"),
                     rs.getString("rEstado"),
-                    rs.getString("rComentario") // Relacionar los comentarios
-                ));
+                    rs.getString("rComentario")
+                );
+                reportes.add(reporte);
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error buscando reportes por usuario: " + e.getMessage(), e);
         }
         return reportes;
     }
 
-    // Buscar reportes por tipo
+    // Buscar reportes por tipo - CORREGIDO
     @Override
     public List<Reporte> buscarReportesPorTipo(String tipoReporte) {
         String sql = """
-                SELECT  r.id AS reporteId, r.titulo AS rTitulo,r.descripcion AS rDescripcion, r.fecha_creacion AS rFecha, r.campaña_id AS rCampañaId,
-                        r.usuario_id AS rUsuarioId, r.tipo_reporte AS rTipoReporte ,r.estado AS rEstado,r.comentario AS rComentario,
-                        c.id AS cId,c.nombre AS cNombre,
-                        u.id AS uId, u.nombre AS uNombre
-                FROM reportes r 
-                LEFT JOIN campañas c ON r.campaña_id=c.id
-                LEFT JOIN usuarios u ON r.usuario_id= u.id
-                WHERE rTipoReporte=?
+            SELECT  
+                r.id AS reporteId, 
+                r.titulo AS rTitulo,
+                r.descripcion AS rDescripcion, 
+                r.fecha_creacion AS rFecha, 
+                r.campaña_id AS rCampañaId,
+                r.usuario_id AS rUsuarioId, 
+                r.tipo_reporte AS rTipoReporte,
+                r.estado AS rEstado,
+                r.comentario AS rComentario,
+                c.id AS cId,
+                c.nombre AS cNombre,
+                u.id AS uId, 
+                u.nombre AS uNombre
+            FROM reportes r 
+            LEFT JOIN campañas c ON r.campaña_id = c.id
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.tipo_reporte = ?
+            ORDER BY r.id
         """;
+        
         List<Reporte> reportes = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, tipoReporte);
             ResultSet rs = ps.executeQuery();
+            
             while (rs.next()) {
-                reportes.add(new Reporte(
+                Campaña campaña = new Campaña(
+                    rs.getInt("cId"), 
+                    rs.getString("cNombre")
+                );
+                
+                Usuario usuario = new Usuario(
+                    rs.getInt("uId"), 
+                    rs.getString("uNombre")
+                );
+                
+                Reporte reporte = new Reporte(
                     rs.getInt("reporteId"),
                     rs.getString("rTitulo"),
                     rs.getString("rDescripcion"),
-                    rs.getObject("fecha_creacion", LocalDate.class),
-                    new Campaña(rs.getInt("rCampañaId"), rs.getString("cNombre")), // Relación con campaña
-                    new Usuario(rs.getInt("rUsuarioId"), rs.getString("uNombre")), // Relación con usuario
-                    rs.getString("rTipoReporte"), // Se obtiene el tipo de reporte
+                    rs.getDate("rFecha") != null ? rs.getDate("rFecha").toLocalDate() : null,
+                    campaña,
+                    usuario,
+                    rs.getString("rTipoReporte"),
                     rs.getString("rEstado"),
-                    rs.getString("rComentario") // Relacionar los comentarios
-                ));
+                    rs.getString("rComentario")
+                );
+                reportes.add(reporte);
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error buscando reportes por tipo: " + e.getMessage(), e);
         }
         return reportes;
     }
